@@ -2,35 +2,47 @@
 #include "ui_mainwindow.h"
 
 
-MainWindow::MainWindow(QWidget *parent, QString* _nickname, QString* _ip, int *_port, cUser* _user) : QMainWindow(parent), ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent, QString* _nickname, QString* _ip, quint16 *_port, quint16* _port_server, quint16* _port_client,  cUser* _user) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
     nickname = _nickname;
     ip = _ip;
     port = _port;
+    port_server = _port_server;
+    port_client = _port_client;
     user = _user;
 
     socket_udp = new QUdpSocket(this);
-    socket_udp->bind(QHostAddress(*_ip), *port);
+    if(!socket_udp->bind(QHostAddress(*_ip), *port))
+    {
+        QMessageBox::warning(this, "Ошибка", "Невозможно присоединить сокет UDP к порту");
+        return;
+    }
 
     socket_tcp = new QTcpSocket(this);
-    socket_tcp->bind(QHostAddress(*_ip), *port);
-
-    server_tcp = new QTcpServer(this);
-
-    if(!server_tcp->listen(QHostAddress::Any, *port))
+    if(!socket_tcp->bind(QHostAddress(*_ip), *port_client))
     {
-        QMessageBox::warning(this, "Ошибка", "Не удалось запустить сервер");
+        QMessageBox::warning(this, "Ошибка", "Невозможно присоединить сокет TCP к порту");
+        return;
     }
+
+    file_receive_size = 0;
+    data_file_receive_size = 0;
+    broadcast = false;
+    file_receive = new QFile(this);
+
+
 
     selected_user = new QHostAddress;
 
-    data_receive_size = 0;
 
     timer_check_users = new QTimer(this);
-    timer_check_users->setInterval(3000);
+    timer_check_users->setInterval(3000); //интервал проверки пользователей
     timer_check_users->start();
+
+    timer_file_receive_timeout = new QTimer(this);
+    timer_file_receive_timeout->setInterval(5000); //тайм-аут при приеме файла
 
     ui->button_clear->setEnabled(false);
     ui->button_copy->setEnabled(false);
@@ -41,6 +53,7 @@ MainWindow::MainWindow(QWidget *parent, QString* _nickname, QString* _ip, int *_
     ui->button_send_file->setEnabled(false);
 
     connect(ui->text_message, SIGNAL(textChanged()), this, SLOT(ButtonEnabled())); //включение кнопок
+    connect(ui->text_message, SIGNAL(PressEnter()), this, SLOT(SendMessageText()));
     connect(ui->button_clear, SIGNAL(clicked()), this, SLOT(ClearMessageText())); //кнопка очистить
     connect(ui->button_copy, SIGNAL(clicked()), this, SLOT(CopyMessageText())); //кнопка копировать
     connect(ui->button_send, SIGNAL(clicked()), this, SLOT(SendMessageText())); //кнопка отправить
@@ -50,6 +63,7 @@ MainWindow::MainWindow(QWidget *parent, QString* _nickname, QString* _ip, int *_
     connect(socket_udp, SIGNAL(readyRead()), this, SLOT(UDPReadyRead())); //получение сообщения
     connect(socket_tcp, SIGNAL(readyRead()), this, SLOT(TCPReadyRead())); //получение файла
     connect(timer_check_users, SIGNAL(timeout()), this, SLOT(CheckUsers()));//проверка пользователей каждые n секунд
+    connect(timer_file_receive_timeout, SIGNAL(timeout()), this, SLOT(ReceiveFileTimeOut()));//таймаут передачи файла
     connect(ui->list_users, SIGNAL(itemSelectionChanged()), this, SLOT(ListUserSelected()));//сигнал выделения пользователя
     connect(this, SIGNAL(IsQueryMessage()), SLOT(SendMessageReply()));//ответ на запрос "кто здесь?"
 
@@ -82,16 +96,19 @@ void MainWindow::CopyMessageText()
 
 void MainWindow::SendMessageText() // Отправить текст.......................
 {
-    QByteArray buffer;
-    QDataStream out(&buffer, QIODevice::WriteOnly);
-    out << qint64(0);
-    out << qint8(TYPE_MSG_CHAT);
-    out << *nickname;
-    out << ui->text_message->toHtml();
-    out.device()->seek(qint64(0));
-    out << qint64(buffer.size() - sizeof(qint64));
-    socket_udp->writeDatagram(buffer, QHostAddress::Broadcast, *port);
-    ui->text_message->clear();
+    if(!ui->text_message->toHtml().isEmpty())
+    {
+        QByteArray buffer;
+        QDataStream out(&buffer, QIODevice::WriteOnly);
+        out << qint64(0);
+        out << qint8(TYPE_MSG_CHAT);
+        out << *nickname;
+        out << ui->text_message->toHtml();
+        out.device()->seek(qint64(0));
+        out << qint64(buffer.size() - sizeof(qint64));
+        socket_udp->writeDatagram(buffer, QHostAddress::Broadcast, *port);
+        ui->text_message->clear();
+    }
 }
 
 MainWindow::~MainWindow()
@@ -112,14 +129,14 @@ void MainWindow::on_action_Alt_F4_triggered() //настройки-выход
 
 void MainWindow::on_action_triggered() //действие-настройки
 {
-    DialogSetup* dialog_setup = new DialogSetup(this, nickname, ip, port);
+    DialogSetup* dialog_setup = new DialogSetup(this, nickname, ip, port, port_server, port_client);
     dialog_setup->show();
     dialog_setup->exec();
 }
 
 void MainWindow::UDPReadyRead() //Прочитать датаграмму UDP
 {
-    while(socket_udp->hasPendingDatagrams())
+    while(socket_udp->pendingDatagramSize() != -1)
     {
         QByteArray buffer;
         buffer.resize(socket_udp->pendingDatagramSize());
@@ -183,17 +200,22 @@ void MainWindow::UDPReadyRead() //Прочитать датаграмму UDP
             in >> address;
             if(address == QHostAddress(*ip)) //если ип совпадает
             {
+                socket_tcp->disconnectFromHost();
                 QString file_name;
                 in >> file_name;
                 in >> file_receive_size;
-                socket_tcp->connectToHost(sender_address, *port);
+                socket_tcp->connectToHost(sender_address, *port_client);
                 if(socket_tcp->waitForConnected(5000))
                 {
-                    ui->status_bar->showMessage("Подключен к серверу для получения файла");
+                    ui->status_bar->showMessage("Получение файла: Подключен к серверу для получения файла");
+                    broadcast = true;
+                    timer_file_receive_timeout->start();
                     QString save_path = "Downloads/";
                     QDir dir;
                     dir.mkpath(save_path);
-                    file_receive = new QFile(save_path + file_name);
+                    file_receive->setFileName(save_path + file_name);
+                    if(!file_receive->open(QIODevice::WriteOnly))
+                        ui->status_bar->showMessage("Ошибка получения файла: Невозможно создать файл для записи");
                 }
                 else
                 {
@@ -202,26 +224,44 @@ void MainWindow::UDPReadyRead() //Прочитать датаграмму UDP
                 }
             }
         }
+        else if(type == TYPE_MSG_SIGNAL_STOPSENDFILE) //стоп сигнал
+        {
+            QHostAddress address;
+            in >> address;
+            if(address == QHostAddress(*ip))
+            {
+                ui->status_bar->showMessage("Получение файла: Передача прервана");
+                DisconnectFromServer();
+            }
+        }
     }
 }
 
 void MainWindow::TCPReadyRead()//прием файла
 {
-    QDataStream in(socket_tcp);
-    char block[SIZE_BLOCK_SEND_FILE];
-    while(!in.atEnd())
+    if(broadcast)
     {
-        qint64 to_file = in.readRawData(block, sizeof(block));
-        data_receive_size += to_file;
-        file_receive->write(block, to_file);
-    }
-    if(file_receive_size == data_receive_size)
-    {
-        ui->status_bar->showMessage("Загрузка файла " + file_receive->fileName() + " завершена");
-        file_receive->close();
-        file_receive = NULL;
-        file_receive_size = 0;
-        data_receive_size = 0;
+        char block[SIZE_BLOCK_SEND_FILE];
+        QDataStream in(socket_tcp);
+        while(!in.atEnd())
+        {
+            int size = in.readRawData(block, sizeof(block));
+            data_file_receive_size += size;
+            file_receive->write(block, size);
+            float status = (float)data_file_receive_size / (float)file_receive_size * 100.0f;
+            ui->status_bar->showMessage("Получение файла: " + QString::number(data_file_receive_size) + " | " + QString::number(file_receive_size));
+            timer_file_receive_timeout->start();
+        }
+        if(data_file_receive_size == file_receive_size)
+        {
+            DisconnectFromServer();
+            ui->status_bar->showMessage("Получение файла: Файл получен");
+        }
+        else if(data_file_receive_size > file_receive_size)
+        {
+            ui->status_bar->showMessage("Получение файла: Ошибка - получено больше ожидаемого байтов");
+            DisconnectFromServer();
+        }
     }
 }
 
@@ -305,7 +345,29 @@ void MainWindow::ListUserSelected()
 
 void MainWindow::OpenDialogSendFile()
 {
-    DialogSendFile* dialog_send_file = new DialogSendFile(this, server_tcp, socket_tcp, socket_udp, QHostAddress(*ip), port);
+    DialogSendFile* dialog_send_file = new DialogSendFile(this, socket_tcp, socket_udp, *selected_user, port, port_server);
     dialog_send_file->show();
     dialog_send_file->exec();
+}
+
+void MainWindow::DisconnectFromServer()
+{
+    file_receive->close();
+    data_file_receive_size = 0;
+    socket_tcp->disconnectFromHost();
+    broadcast = false;
+}
+
+void MainWindow::ReceiveFileTimeOut()
+{
+    if(broadcast)
+    {
+        DisconnectFromServer();
+        ui->status_bar->showMessage("Передача файла: Таймаут приема файла");
+    }
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    AnnounceStatus(STATUS_DISCONNECT);
 }

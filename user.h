@@ -13,11 +13,12 @@ public:
     quint32 GetIp();
     QString nickname;
     bool check;
+    bool is_exist;
 
 private:
 
     quint32 ip;
-    bool is_exist;
+
 };
 
 #endif // USER_H

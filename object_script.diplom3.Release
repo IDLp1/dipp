@@ -1,0 +1,13 @@
+INPUT(
+./release/main.o
+./release/mainwindow.o
+./release/dialogsetup.o
+./release/user.o
+./release/dialogsendfile.o
+./release/mytextedit.o
+./release/qrc_resource.o
+./release/moc_mainwindow.o
+./release/moc_dialogsetup.o
+./release/moc_dialogsendfile.o
+./release/moc_mytextedit.o
+);

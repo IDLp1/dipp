@@ -1,7 +1,8 @@
 #include "dialogsendfile.h"
 #include "ui_dialogsendfile.h"
 
-DialogSendFile::DialogSendFile(QWidget *parent, QTcpServer* _server_tcp, QTcpSocket* _socket_tcp, QUdpSocket *_socket_udp, QHostAddress _address, int* _port) :
+DialogSendFile::DialogSendFile(QWidget *parent, QTcpSocket* _socket_tcp,
+                               QUdpSocket* _socket_udp, QHostAddress _address, quint16* _port, quint16* _port_server) :
     QDialog(parent),
     ui(new Ui::DialogSendFile)
 {
@@ -14,19 +15,31 @@ DialogSendFile::DialogSendFile(QWidget *parent, QTcpServer* _server_tcp, QTcpSoc
 
     address = _address;
     port = _port;
+    port_server = _port_server;
     socket_tcp = _socket_tcp;
     socket_udp = _socket_udp;
-    server_tcp = _server_tcp;
 
-    file_size = 0;
-    file_flopover = 0;
+    server_tcp = new QTcpServer(this);
+    if(!server_tcp->listen(QHostAddress::Any, *port_server))
+    {
+        QMessageBox::warning(this, "Ошибка", "Не удалось запустить сервер");
+    }
 
-    connect(ui->button_cancel, SIGNAL(clicked(bool)), this, SLOT(close()));
+    file = new QFile(this);
+
+    file_size = 0; //размер файла
+    file_data_send_size = 0; //кол-во передано
+
+    timer_file_send_timeout = new QTimer(this);
+    timer_file_send_timeout->setInterval(5000);
+
+
+    connect(ui->button_cancel, SIGNAL(clicked(bool)), this, SLOT(CancelClicked()));
     connect(ui->button_send, SIGNAL(clicked(bool)), this, SLOT(SendSignal()));
     connect(ui->line_edit_filename, SIGNAL(textChanged(QString)), this, SLOT());
     connect(this, SIGNAL(EndSendFile()), this, SLOT(close()));
     connect(server_tcp, SIGNAL(newConnection()), this, SLOT(SendFile()));
-
+    connect(timer_file_send_timeout, SIGNAL(timeout()), this, SLOT(FileSendTimeout()));
 }
 
 DialogSendFile::~DialogSendFile()
@@ -34,39 +47,44 @@ DialogSendFile::~DialogSendFile()
     delete ui;
 }
 
-void DialogSendFile::SendFile()
+void DialogSendFile::SendFile() //при newConnection
 {
-    socket_tcp = server_tcp->nextPendingConnection();
     ui->progress_bar->setEnabled(true);
-   /* QByteArray buffer;
-    QDataStream out(&buffer, QIODevice::WriteOnly);
-    //
-    socket_tcp->write(buffer);
-    socket_tcp->waitForBytesWritten();*/
-    connect(socket_tcp, SIGNAL(bytesWritten(qint64)), this, SLOT(SendPartFile()));
+    ui->progress_bar->setValue(0);
+
+    server_socket_tcp = server_tcp->nextPendingConnection();
+    qDebug() << 51 << " " << server_socket_tcp;
+    connect(server_socket_tcp, SIGNAL(bytesWritten(qint64)), this, SLOT(SendPartFile()));
+    ui->button_cancel->setText("Прервать");
+    broadcast = true;
+    timer_file_send_timeout->start();
     SendPartFile();
 }
 
 void DialogSendFile::SendPartFile()
 {
     char block[SIZE_BLOCK_SEND_FILE];
-    if(!file->atEnd())
+    for(int i(0); i < SIZE_BLOCK_SEND_FILE; i++)
     {
-        qint64 in = file->read(block, sizeof(block));
-        qint64 send = socket_tcp->write(block, in);
-        file_flopover += send;
-        float ff = file_flopover / file_size;
-        ui->progress_bar->setValue(qint64(ff));
+        block[i] = 0;
     }
-    else //конец файла
+    if(!file->atEnd() && broadcast)
     {
-        file->close();
-        file = NULL;
-        file_size = 0;
-        file_flopover = 0;
-        disconnect(socket_tcp, SIGNAL(bytesWritten(qint64)), this, SLOT(SendPartFile()));
-        ui->progress_bar->setEnabled(false);
-        QMessageBox::information(this, "Файл", "Передача файла завершена");
+        quint64 size = file->read(block, sizeof(block));
+        file_data_send_size += size;
+        timer_file_send_timeout->start();
+        if(file_size != 0)
+        {
+            float r = (float)file_data_send_size / (float)file_size;
+            ui->progress_bar->setValue((int)(r * 100.0f));
+        }
+        else
+            ui->progress_bar->setValue(0);
+        server_socket_tcp->write(block, size);
+    }
+    else
+    {
+        StopSendFile();
         emit EndSendFile();
     }
 }
@@ -80,7 +98,8 @@ void DialogSendFile::ButtonEnable()
 void DialogSendFile::SendSignal()
 {
     QString filename = ui->line_edit_filename->text();
-    file = new QFile(filename);
+    file->setFileName(filename);
+    qDebug() << file;
     if(file->open(QFile::ReadOnly))
     {
         file_size = file->size();
@@ -102,5 +121,59 @@ void DialogSendFile::SendSignal()
     {
         QMessageBox::warning(this, "Ошибка", "Указаный файл не найден");
         return;
+    }
+}
+
+void DialogSendFile::CancelClicked()
+{
+    if(broadcast)
+    {
+        broadcast = false;
+        ui->button_cancel->setText("Закрыть");
+        StopSendFile();
+        SendStopSignal();
+    }
+    else
+    {
+        close();
+    }
+
+}
+
+void DialogSendFile::SendStopSignal()
+{
+    QByteArray buffer;
+    QDataStream out(&buffer, QIODevice::WriteOnly);
+    out << qint64(0);
+    out << qint8(TYPE_MSG_SIGNAL_STOPSENDFILE);
+    out << address;
+    out.device()->seek(qint64(0));
+    out << qint64(buffer.size() - sizeof(qint64));
+    socket_udp->writeDatagram(buffer, QHostAddress::Broadcast, *port);
+}
+
+void DialogSendFile::StopSendFile()
+{
+    if(broadcast)
+    {
+        broadcast = false;
+        ui->button_cancel->setText("Закрыть");
+    }
+    file->close();
+    file_size = 0;
+    file_data_send_size = 0;
+    disconnect(server_socket_tcp, SIGNAL(bytesWritten(qint64)), this, SLOT(SendPartFile()));
+    server_socket_tcp->disconnectFromHost();
+    server_tcp->deleteLater();
+}
+
+void DialogSendFile::FileSendTimeout()
+{
+    timer_file_send_timeout->stop();
+    if(broadcast)
+    {
+        QMessageBox::warning(this, "Ошибка", "Таймаут передачи файла");
+        broadcast = false;
+        StopSendFile();
     }
 }

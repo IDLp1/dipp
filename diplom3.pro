@@ -8,6 +8,7 @@ QT       += core gui
 QT       += network
 QT += multimedia
 
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = diplom3
@@ -18,13 +19,15 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     dialogsetup.cpp \
     user.cpp \
-    dialogsendfile.cpp
+    dialogsendfile.cpp \
+    mytextedit.cpp
 
 HEADERS  += mainwindow.h \
     dialogsetup.h \
     main.h \
     user.h \
-    dialogsendfile.h
+    dialogsendfile.h \
+    mytextedit.h
 
 FORMS    += mainwindow.ui \
     dialogsetup.ui \

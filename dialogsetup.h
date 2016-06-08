@@ -14,7 +14,7 @@ class DialogSetup : public QDialog
 
 public:
     explicit DialogSetup(QWidget *parent = 0);
-    explicit DialogSetup(QWidget *parent, QString* _nickname, QString* _ip, int* _port);
+    explicit DialogSetup(QWidget *parent, QString* _nickname, QString* _ip, quint16* _port, quint16* _port_server, quint16* _port_client);
     ~DialogSetup();
 
     void SetParam(QString* nickname, QString* _ip, QString* _arrow);
@@ -24,12 +24,15 @@ private:
 
     QString* nickname;
     QString* ip;
-    int* port;
+    quint16* port;
+    quint16* port_server;
+    quint16* port_client;
     bool* is_dialog_setup;
 private slots:
     void OkClicked();
     void CancelClicked();
     void TextLineChanged();
+    void CheckBoxClicked();
 };
 
 #endif // DIALOGSETUP_H

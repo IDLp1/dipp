@@ -117,7 +117,7 @@ public:
         label->setText(QApplication::translate("DialogSendFile", "\320\237\321\203\321\202\321\214 \320\272 \321\204\320\260\320\271\320\273\321\203", 0));
         label_text->setText(QApplication::translate("DialogSendFile", "TextLabel", 0));
         button_send->setText(QApplication::translate("DialogSendFile", "\320\236\321\202\320\277\321\200\320\260\320\262\320\270\321\202\321\214", 0));
-        button_cancel->setText(QApplication::translate("DialogSendFile", "\320\237\321\200\320\265\321\200\320\262\320\260\321\202\321\214", 0));
+        button_cancel->setText(QApplication::translate("DialogSendFile", "\320\236\321\202\320\274\320\265\320\275\320\260", 0));
     } // retranslateUi
 
 };

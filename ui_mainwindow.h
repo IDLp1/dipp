@@ -27,6 +27,7 @@
 #include <QtWidgets/QTextEdit>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
+#include <mytextedit.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -52,7 +53,7 @@ public:
     QTextEdit *text_chat;
     QVBoxLayout *verticalLayout;
     QGridLayout *gridLayout;
-    QTextEdit *text_message;
+    MyTextEdit *text_message;
     QPushButton *button_copy;
     QPushButton *button_clear;
     QHBoxLayout *horizontalLayout;
@@ -152,7 +153,7 @@ public:
         gridLayout = new QGridLayout();
         gridLayout->setSpacing(6);
         gridLayout->setObjectName(QStringLiteral("gridLayout"));
-        text_message = new QTextEdit(widget_chat);
+        text_message = new MyTextEdit(widget_chat);
         text_message->setObjectName(QStringLiteral("text_message"));
         text_message->setTextInteractionFlags(Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse|Qt::TextBrowserInteraction|Qt::TextEditable|Qt::TextEditorInteraction|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse);
 

@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QMainWindow>
 #include <QMessageBox>
+#include <QTextEdit>
 #include <QDir>
 #include <QFile>
 #include <QTextStream>
@@ -11,6 +12,7 @@
 #include <QTimer>
 #include <QSound>
 #include <QScrollBar>
+#include <QKeyEvent>
 
 #include <QDebug>
 
@@ -22,9 +24,6 @@
 const QString default_nickname = "User";
 const QString default_ip = "127.0.0.1";
 
-const QString cs_ask((char)3);
-const QString cs_reply((char)5);
-const QString cs_del((char)1);
 
 const int default_port = 16925;
 
