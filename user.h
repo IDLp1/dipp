@@ -13,10 +13,8 @@ public:
     quint32 GetIp();
     QString nickname;
     bool check;
-    bool is_exist;
-
+bool is_exist;
 private:
-
     quint32 ip;
 
 };

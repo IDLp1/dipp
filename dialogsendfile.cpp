@@ -53,7 +53,6 @@ void DialogSendFile::SendFile() //при newConnection
     ui->progress_bar->setValue(0);
 
     server_socket_tcp = server_tcp->nextPendingConnection();
-    qDebug() << 51 << " " << server_socket_tcp;
     connect(server_socket_tcp, SIGNAL(bytesWritten(qint64)), this, SLOT(SendPartFile()));
     ui->button_cancel->setText("Прервать");
     broadcast = true;

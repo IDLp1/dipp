@@ -45,7 +45,6 @@ public:
     QLabel *label_users;
     QPushButton *button_refresh_users;
     QListWidget *list_users;
-    QPushButton *button_send_private;
     QPushButton *button_send_file;
     QSpacerItem *verticalSpacer;
     QWidget *widget_chat;
@@ -110,11 +109,6 @@ public:
         list_users->setMaximumSize(QSize(120, 300));
 
         verticalLayout_3->addWidget(list_users);
-
-        button_send_private = new QPushButton(widget_users);
-        button_send_private->setObjectName(QStringLiteral("button_send_private"));
-
-        verticalLayout_3->addWidget(button_send_private);
 
         button_send_file = new QPushButton(widget_users);
         button_send_file->setObjectName(QStringLiteral("button_send_file"));
@@ -230,8 +224,7 @@ public:
         action_5->setText(QApplication::translate("MainWindow", "\320\236\320\261 \320\260\320\262\321\202\320\276\321\200\320\265", 0));
         label_users->setText(QApplication::translate("MainWindow", "\320\237\320\276\320\273\321\214\320\267\320\276\320\262\320\260\321\202\320\265\320\273\320\270", 0));
         button_refresh_users->setText(QApplication::translate("MainWindow", "\320\236\320\261\320\275\320\276\320\262\320\270\321\202\321\214", 0));
-        button_send_private->setText(QApplication::translate("MainWindow", "\320\241\320\276\320\276\320\261\321\211\320\265\320\275\320\270\320\265", 0));
-        button_send_file->setText(QApplication::translate("MainWindow", "\320\244\320\260\320\271\320\273", 0));
+        button_send_file->setText(QApplication::translate("MainWindow", "\320\237\320\265\321\200\320\265\320\264\320\260\321\202\321\214 \321\204\320\260\320\271\320\273", 0));
         button_copy->setText(QApplication::translate("MainWindow", "\320\232\320\276\320\277\320\270\321\200\320\276\320\262\320\260\321\202\321\214", 0));
         button_clear->setText(QApplication::translate("MainWindow", "\320\236\321\207\320\270\321\201\321\202\320\270\321\202\321\214", 0));
         button_send->setText(QApplication::translate("MainWindow", "\320\236\321\202\320\277\321\200\320\260\320\262\320\270\321\202\321\214", 0));

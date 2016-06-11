@@ -18,6 +18,7 @@ void cUser::AddUser(const QString *_nickname, const QHostAddress *_ip)
 void cUser::DeleteUser()
 {
     is_exist = false;
+    check = false;
 }
 
 bool cUser::IsExist()

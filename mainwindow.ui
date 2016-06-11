@@ -62,16 +62,9 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="button_send_private">
-         <property name="text">
-          <string>Сообщение</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QPushButton" name="button_send_file">
          <property name="text">
-          <string>Файл</string>
+          <string>Передать файл</string>
          </property>
         </widget>
        </item>

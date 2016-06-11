@@ -64,6 +64,20 @@ void CheckList() //проверка состояния сети пользова
         }
     }
 }
+void DeleteUser(const QString* _nickname, const QHostAddress* _ip)
+{
+    for(int i = 0; i < MAX_USERS; i++)
+    {
+        if(c_user[i].is_exist)
+        {
+            if(c_user[i].nickname == *_nickname && c_user[i].GetIp() == _ip->toIPv4Address())
+            {
+                c_user[i].DeleteUser();
+            }
+        }
+    }
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -141,7 +155,6 @@ int main(int argc, char *argv[])
 
         }
     }
-    file_cfg.flush();
     file_cfg.close();
 
     //Создание главного окна

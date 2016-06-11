@@ -33,3 +33,4 @@ quint32 QStringAtIp(const QString* _string);
 
 bool AddUserInList(const QString* _nickname, const QHostAddress* _ip);
 void CheckList();
+void DeleteUser(const QString* _nickname, const QHostAddress* _ip);

@@ -49,11 +49,10 @@ MainWindow::MainWindow(QWidget *parent, QString* _nickname, QString* _ip, quint1
     ui->button_send->setEnabled(false);
     ui->button_send->setDefault(true);
 
-    ui->button_send_private->setEnabled(false);
     ui->button_send_file->setEnabled(false);
 
     connect(ui->text_message, SIGNAL(textChanged()), this, SLOT(ButtonEnabled())); //включение кнопок
-    connect(ui->text_message, SIGNAL(PressEnter()), this, SLOT(SendMessageText()));
+    connect(ui->text_message, SIGNAL(PressEnter()), this, SLOT(SendMessageText())); // нажатие Enter
     connect(ui->button_clear, SIGNAL(clicked()), this, SLOT(ClearMessageText())); //кнопка очистить
     connect(ui->button_copy, SIGNAL(clicked()), this, SLOT(CopyMessageText())); //кнопка копировать
     connect(ui->button_send, SIGNAL(clicked()), this, SLOT(SendMessageText())); //кнопка отправить
@@ -370,4 +369,12 @@ void MainWindow::ReceiveFileTimeOut()
 void MainWindow::closeEvent(QCloseEvent* event)
 {
     AnnounceStatus(STATUS_DISCONNECT);
+}
+
+void MainWindow::on_action_5_triggered() //Об авторе
+{
+    QMessageBox::information(this, "О программе",
+                             "Программу разработал студент СГУ КНиИТ ИВТ 521 группы Заочного отделения: "
+                             "Исаев Дмитрий Львович. Программа является практической частью дипломной работы: "
+                             "\"Разработка сетевого приложения с помощью кросс-платформенного инструментария Qt\"");
 }

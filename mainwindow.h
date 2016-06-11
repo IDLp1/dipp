@@ -40,8 +40,6 @@ private:
     cUser*          user;
     QUdpSocket*     socket_udp;
     QTcpSocket*     socket_tcp;
-    //QTcpServer*     server_tcp;
-
     QTimer*         timer_check_users;
     QTimer*         timer_file_receive_timeout;
 
@@ -72,6 +70,8 @@ private slots:
     void OpenDialogSendFile();
     void DisconnectFromServer();
     void ReceiveFileTimeOut();
+    void on_action_5_triggered();
+
 signals:
     void IsQueryMessage();
 };
